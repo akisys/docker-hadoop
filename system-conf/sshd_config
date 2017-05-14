@@ -1,0 +1,11 @@
+Port 2122
+Protocol 2
+LoginGraceTime 120
+PermitRootLogin without-password
+StrictModes yes
+ChallengeResponseAuthentication no
+PasswordAuthentication yes
+UseDNS no
+UsePAM no
+RSAAuthentication yes
+PubkeyAuthentication yes
