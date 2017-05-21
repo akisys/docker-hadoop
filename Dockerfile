@@ -5,19 +5,6 @@ USER root
 ENV JAVA_HOME /docker-java-home
 ENV HADOOP_VERSION 2.8.0
 
-ENV HADOOP_PREFIX /usr/local/hadoop
-ENV HADOOP_COMMON_HOME $HADOOP_PREFIX
-ENV HADOOP_HDFS_HOME $HADOOP_PREFIX
-ENV HADOOP_MAPRED_HOME $HADOOP_PREFIX
-ENV HADOOP_YARN_HOME $HADOOP_PREFIX
-ENV HADOOP_CONF_DIR $HADOOP_PREFIX/etc/hadoop
-ENV YARN_CONF_DIR $HADOOP_PREFIX/etc/hadoop
-
-ENV HADOOP_OPTS -Djava.library.path=$HADOOP_PREFIX/lib/native
-ENV PATH $PATH:$HADOOP_PREFIX/bin:$HADOOP_PREFIX/sbin
-
-ENV HADOOP_HDFS_DATADIR /hdfs
-
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y openssh-server aria2 libzip2 libsnappy1 libssl-dev && \
     aria2c http://archive.apache.org/dist/hadoop/core/hadoop-$HADOOP_VERSION/hadoop-$HADOOP_VERSION.tar.gz && \
@@ -27,30 +14,25 @@ RUN apt-get update && \
     rm /hadoop-$HADOOP_VERSION.tar.gz && \
     mv hadoop-$HADOOP_VERSION /usr/local/hadoop
 
-# workingaround docker.io build error
-RUN ls -la $HADOOP_CONF_DIR/*-env.sh
-RUN chmod +x $HADOOP_CONF_DIR/*-env.sh
-RUN ls -la $HADOOP_CONF_DIR/*-env.sh
-
-ADD system-conf/ssh_config /root/.ssh/config
-RUN chmod 600 /root/.ssh/config
-RUN chown root:root /root/.ssh/config
-
 ADD system-conf/sshd_config /etc/ssh/sshd_config
+ADD system-conf/ssh_config /root/.ssh/config
+RUN chmod 600 /root/.ssh/config && \
+    chown root:root /root/.ssh/config
 
 # passwordless ssh
-RUN ssh-keygen -q -N "" -t rsa -f /root/.ssh/id_rsa
-RUN cp /root/.ssh/id_rsa.pub /root/.ssh/authorized_keys
+RUN ssh-keygen -q -N "" -t rsa -f /root/.ssh/id_rsa && \
+    cp /root/.ssh/id_rsa.pub /root/.ssh/authorized_keys
 
-RUN mkdir -p $HADOOP_HOME $HADOOP_HDFS_DATADIR
+ENV HADOOP_PREFIX /usr/local/hadoop
+ENV HADOOP_COMMON_HOME $HADOOP_PREFIX
+ENV HADOOP_HDFS_HOME $HADOOP_PREFIX
+ENV HADOOP_MAPRED_HOME $HADOOP_PREFIX
+ENV HADOOP_YARN_HOME $HADOOP_PREFIX
+ENV YARN_CONF_DIR $HADOOP_PREFIX/etc/hadoop
+ENV HADOOP_CONF_DIR $HADOOP_PREFIX/etc/hadoop
 
-COPY hadoop-conf $HADOOP_CONF_DIR
-
-# Formatting HDFS
-RUN mkdir -p $HADOOP_HDFS_DATADIR/logs $HADOOP_HDFS_DATADIR/data $HADOOP_HDFS_DATADIR/name $HADOOP_HDFS_DATADIR/namesecondary && \
-    hdfs namenode -format
-
-VOLUME $HADOOP_HDFS_DATADIR
+ENV HADOOP_OPTS -Djava.library.path=$HADOOP_PREFIX/lib/native
+ENV PATH $PATH:$HADOOP_PREFIX/bin:$HADOOP_PREFIX/sbin
 
 # Hdfs ports
 EXPOSE 50010 50020 50070 50075 50090 8020 9000
@@ -62,9 +44,19 @@ EXPOSE 8030 8031 8032 8033 8040 8042 8088
 EXPOSE 49707 2122
 
 ######################
+VOLUME /hdfs
+
+ENV HADOOP_HDFS_DIR /hdfs
+ENV HADOOP_HDFS_DATADIR $HADOOP_HDFS_DIR/data
+ENV HADOOP_HDFS_DATA_NAMEDIR $HADOOP_HDFS_DIR/name
+ENV HADOOP_HDFS_DATA_SECONDARYNAMEDIR $HADOOP_HDFS_DIR/namesecondary
+ENV HADOOP_HDFS_DATA_LOGDIR $HADOOP_HDFS_DIR/logs
+ENV YARN_LOG_DIR $HADOOP_HDFS_DATA_LOGDIR
+ENV HADOOP_MAPRED_LOG_DIR $HADOOP_HDFS_DATA_LOGDIR
+
+COPY hadoop-conf $HADOOP_CONF_DIR
+RUN  chmod +x $HADOOP_CONF_DIR/*-env.sh
 
 ADD scripts/entrypoint.sh /entrypoint.sh
-RUN chown root:root /entrypoint.sh
-RUN chmod 700 /entrypoint.sh
 
 CMD ["/entrypoint.sh"]
