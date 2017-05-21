@@ -1,4 +1,4 @@
-version: "3.1"
+version: "2"
 
 services:
   namenode-primary:
@@ -8,25 +8,29 @@ services:
     command: /entrypoint.sh hdfs namenode
     hostname: hdfs-namenode
     volumes:
-      - hdfs:/hdfs
+      - /tmp/docker/hdfs:/hdfs
   namenode-secondary:
     image: akisys/hadoop:2.8.0
     command: /entrypoint.sh hdfs secondarynamenode
     ports:
       - 50090:50090
+    depends_on:
+      - namenode-primary
     links:
       - namenode-primary:hdfs-namenode
     volumes:
-      - hdfs:/hdfs
+      - /tmp/docker/hdfs:/hdfs
   datanode:
     image: akisys/hadoop:2.8.0
     command: /entrypoint.sh hdfs datanode
     ports:
       - 50075:50075
+    depends_on:
+      - namenode-primary
     links:
       - namenode-primary:hdfs-namenode
     volumes:
-      - hdfs:/hdfs
+      - /mnt/docker/hdfs:/hdfs
   resourcemanager:
     image: akisys/hadoop:2.8.0
     command: /entrypoint.sh yarn resourcemanager
@@ -34,7 +38,7 @@ services:
     ports:
       - 8088:8088
     volumes:
-      - hdfs:/hdfs
+      - /tmp/docker/hdfs:/hdfs
   nodemanager:
     image: akisys/hadoop:2.8.0
     command: /entrypoint.sh yarn nodemanager
@@ -43,8 +47,11 @@ services:
       - namenode-primary:hdfs-namenode
     ports:
       - 8042:8042
+    depends_on:
+      - resourcemanager
+      - namenode-primary
     volumes:
-      - hdfs:/hdfs
+      - /tmp/docker/hdfs:/hdfs
   historyserver:
     image: akisys/hadoop:2.8.0
     command: /entrypoint.sh mapred historyserver
@@ -52,9 +59,7 @@ services:
       - namenode-primary:hdfs-namenode
     ports:
       - 19888:19888
+    depends_on:
+      - namenode-primary
     volumes:
-      - hdfs:/hdfs
-
-volumes:
-  hdfs: {}
-
+      - /tmp/docker/hdfs:/hdfs
